@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motivasi Harian & Forum</title>
+<style>
+  :root{
+    --bg:#faf7f2; --card:#ffffff; --text:#1f1b16; --muted:#6b6259;
+    --accent:#e0692f; --accent2:#2f6b5e; --border:#e8e0d5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17140f; --card:#231f19; --text:#f2ede4; --muted:#a89f92; --accent:#f08a52; --accent2:#5fbfa8; --border:#332d24; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px;}
+  h1{font-size:1.3rem;margin:8px 0 4px;}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:18px;}
+  .daily{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-radius:16px;padding:22px 20px;margin-bottom:22px;}
+  .daily .label{font-size:.75rem;opacity:.85;text-transform:uppercase;letter-spacing:.05em;}
+  .daily .quote{font-size:1.15rem;line-height:1.5;margin-top:8px;font-weight:600;}
+  .auth-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:22px;}
+  .auth-box h3{margin:0 0 10px;font-size:1rem;}
+  .auth-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px;margin-bottom:8px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;}
+  .auth-btn:hover{opacity:.85;}
+  .email-form{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .email-form input{flex:1;min-width:120px;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem;}
+  .userbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-size:.85rem;color:var(--muted);}
+  .userbar button{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.8rem;}
+  .composer{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:22px;}
+  textarea{width:100%;border:none;background:transparent;color:var(--text);resize:vertical;min-height:60px;font-size:.95rem;font-family:inherit;outline:none;}
+  .composer-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+  button.primary{border:none;border-radius:10px;padding:9px 16px;font-size:.9rem;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;}
+  button.ghost{border:none;background:transparent;color:var(--muted);cursor:pointer;padding:9px 12px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .post{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .post-head{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:6px;}
+  .post-text{font-size:.95rem;line-height:1.5;white-space:pre-wrap;}
+  .comments{margin-top:10px;border-top:1px solid var(--border);padding-top:8px;}
+  .comment{font-size:.85rem;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:8px;}
+  .comment b{color:var(--accent2);}
+  .comment-row{display:flex;gap:6px;margin-top:6px;}
+  .comment-row input{flex:1;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-size:.85rem;outline:none;}
+  .comment-row button{padding:7px 12px;font-size:.8rem;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;}
+  .empty{color:var(--muted);text-align:center;padding:30px 0;font-size:.9rem;}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>✨ Motivasi Harian & Forum</h1>
+  <div class="sub">Semangat baru tiap hari, dibagikan bareng komunitas.</div>
+
+  <div class="daily">
+    <div class="label">Motivasi Hari Ini</div>
+    <div class="quote" id="dailyQuote">Memuat…</div>
+  </div>
+
+  <div id="authArea"></div>
+  <div id="userbarArea"></div>
+
+  <div class="composer" id="composerArea" style="display:none;">
+    <textarea id="postInput" placeholder="Bagikan cerita, dukungan, atau motivasimu…"></textarea>
+    <div class="composer-foot">
+      <button class="ghost" id="clearBtn" type="button">Bersihkan</button>
+      <button class="primary" id="postBtn" type="button">Bagikan</button>
+    </div>
+  </div>
+
+  <div id="postsList"></div>
+</div>
+
+<!-- ========================================================
+     SETUP WAJIB SEBELUM DIPAKAI:
+     1. Buat project di https://console.firebase.google.com
+     2. Aktifkan Authentication -> Sign-in method: Google, Email/Password,
+        dan Apple (Apple butuh akun Apple Developer berbayar + konfigurasi
+        Service ID terpisah, lihat dok Firebase "Apple sign-in").
+     3. Aktifkan Firestore Database (mode production), lalu pasang rules
+        di bagian bawah file ini sebagai panduan.
+     4. Copy firebaseConfig dari Project Settings -> General -> Your apps
+        (Web app), ganti objek firebaseConfig di bawah.
+     5. Buka file ini lewat local server (bukan double-click file://),
+        misalnya pakai extension "Live Server" di VS Code, karena
+        Firebase Auth butuh origin http/https.
+     ======================================================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, OAuthProvider,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, collection, addDoc,
+    query, orderBy, limit, onSnapshot, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // GANTI DENGAN CONFIG PROJECT FIREBASE-MU SENDIRI
+  const firebaseConfig = {
+    apiKey: "AIzaSyDNf7FH0xRN3Uh5KN_6MEFDys58pnErUbI",
+    authDomain: "motivasii-15c03.firebaseapp.com",
+    projectId: "motivasii-15c03",
+    storageBucket: "motivasii-15c03.firebasestorage.app",
+    messagingSenderId: "694661281056",
+    appId: "1:694661281056:web:87839a1c7a8a0d6d181345",
+    measurementId: "G-J2EQQXGE6Q"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let currentUser = null;
+
+  // ---------- Motivasi harian (generator lokal, deterministik per tanggal) ----------
+  const OPENERS = [
+    "Percaya deh,", "Ingat ya,", "Hari ini,", "Jangan lupa,", "Sadar nggak,",
+    "Sekecil apapun langkahnya,", "Kalau capek boleh istirahat, tapi", "Coba tarik napas dan ingat:",
+    "Di tengah kesibukan,", "Sebelum lanjut hari ini,", "Sesekali,", "Percayalah,",
+    "Yang perlu kamu tahu:", "Buat kamu yang lagi ragu,", "Kalau hari ini berat,",
+    "Setiap usaha berarti,", "Meski pelan,", "Walau belum terlihat hasilnya,",
+    "Selalu ingat,", "Di saat lelah sekalipun,"
+  ];
+  const CORES = [
+    "kamu sudah jauh lebih baik dari kemarin",
+    "usaha kecilmu hari ini akan berbuah besar nanti",
+    "tidak ada perjalanan yang sia-sia",
+    "kegagalan cuma jeda, bukan akhir cerita",
+    "kamu berhak bangga sama progres sekecil apapun",
+    "semua orang hebat pernah mulai dari nol",
+    "konsistensi mengalahkan kesempurnaan",
+    "kamu lebih kuat dari yang kamu kira",
+    "setiap hari adalah kesempatan baru untuk bertumbuh",
+    "rasa lelahmu adalah bukti kamu sedang berjuang",
+    "langkah kecil tetaplah sebuah kemajuan",
+    "kamu tidak sendirian dalam perjuanganmu",
+    "waktu terbaik untuk mulai adalah sekarang",
+    "kesabaran hari ini adalah kekuatan besok",
+    "kamu sedang menulis cerita versi terbaikmu",
+    "tidak apa berjalan pelan, asal jangan berhenti",
+    "keberanian mencoba lebih penting dari hasil sempurna",
+    "hal baik butuh proses, dan kamu sedang menjalaninya",
+    "semangatmu hari ini akan menuntun langkah besok",
+    "percaya pada proses, hasil akan mengikuti",
+    "dirimu yang sekarang sedang berjuang untuk masa depan yang lebih baik",
+    "tidak perlu terburu-buru, cukup terus melangkah",
+    "kamu pantas mendapatkan hal-hal baik dari usahamu",
+    "rintangan hari ini adalah pelajaran untuk esok",
+    "mimpi besar dimulai dari kebiasaan kecil hari ini",
+    "kamu berkembang lebih dari yang kamu sadari",
+    "jangan bandingkan babak 1-mu dengan babak 20 orang lain",
+    "istirahat itu bagian dari perjalanan, bukan penghambat",
+    "kamu sudah bertahan 100% dari hari-hari terburukmu",
+    "hal kecil yang kamu lakukan hari ini penting",
+    "keberhasilan adalah kumpulan usaha kecil yang konsisten",
+    "kamu boleh lelah, tapi jangan menyerah",
+    "percaya diri itu dibangun, bukan diberi",
+    "setiap kesulitan menyimpan pelajaran berharga",
+    "kamu punya kendali atas caramu merespons hari ini",
+    "tumbuh itu tidak harus cepat, yang penting terus jalan",
+    "kegigihanmu hari ini akan terbayar suatu saat nanti",
+    "jangan takut mencoba hal baru, di situlah kamu berkembang",
+    "kamu lebih dekat ke tujuanmu dari yang kamu kira",
+    "hari yang biasa saja pun tetap layak disyukuri"
+  ];
+
+  function seededIndex(seedStr, mod){
+    let hash = 0;
+    for(let i=0;i<seedStr.length;i++){
+      hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+    }
+    return hash % mod;
+  }
+
+  function getDailyQuote(){
+    const today = new Date().toISOString().slice(0,10);
+    const oi = seededIndex(today + "-opener", OPENERS.length);
+    const ci = seededIndex(today + "-core", CORES.length);
+    return `${OPENERS[oi]} ${CORES[ci]}.`;
+    // OPENERS x CORES = ${OPENERS.length * CORES.length} kombinasi berbeda,
+    // dipilih otomatis & konsisten untuk semua orang di tanggal yang sama.
+  }
+
+  document.getElementById('dailyQuote').textContent = getDailyQuote();
+
+  // ---------- Auth UI ----------
+  const authArea = document.getElementById('authArea');
+  const userbarArea = document.getElementById('userbarArea');
+  const composerArea = document.getElementById('composerArea');
+
+  function renderLoggedOut(){
+    authArea.innerHTML = `
+      <div class="auth-box">
+        <h3>Login untuk posting & komentar</h3>
+        <button class="auth-btn" id="googleBtn">Masuk dengan Google</button>
+        <button class="auth-btn" id="appleBtn">Masuk dengan Apple</button>
+        <div class="email-form">
+          <input type="email" id="emailInput" placeholder="Email">
+          <input type="password" id="passInput" placeholder="Password">
+        </div>
+        <div class="email-form">
+          <button class="auth-btn" id="emailLoginBtn" style="flex:1;">Masuk</button>
+          <button class="auth-btn" id="emailRegisterBtn" style="flex:1;">Daftar</button>
+        </div>
+        <div class="hint">Cukup lihat forum tanpa login, tapi posting & komentar butuh akun.</div>
+      </div>`;
+    userbarArea.innerHTML = '';
+    composerArea.style.display = 'none';
+
+    document.getElementById('googleBtn').onclick = () =>
+      signInWithPopup(auth, new GoogleAuthProvider()).catch(e => alert(e.message));
+    document.getElementById('appleBtn').onclick = () =>
+      signInWithPopup(auth, new OAuthProvider('apple.com')).catch(e => alert(e.message));
+    document.getElementById('emailLoginBtn').onclick = () => {
+      const email = document.getElementById('emailInput').value;
+      const pass = document.getElementById('passInput').value;
+      signInWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
+    };
+    document.getElementById('emailRegisterBtn').onclick = () => {
+      const email = document.getElementById('emailInput').value;
+      const pass = document.getElementById('passInput').value;
+      createUserWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
+    };
+  }
+
+  function renderLoggedIn(user){
+    authArea.innerHTML = '';
+    userbarArea.innerHTML = `
+      <div class="userbar">
+        <span>Masuk sebagai <b>${escapeHtml(user.displayName || user.email || 'Pengguna')}</b></span>
+        <button id="logoutBtn">Keluar</button>
+      </div>`;
+    composerArea.style.display = 'block';
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    if(user) renderLoggedIn(user); else renderLoggedOut();
+  });
+
+  // ---------- Forum (Firestore) ----------
+  const postsList = document.getElementById('postsList');
+  const postInput = document.getElementById('postInput');
+
+  document.getElementById('postBtn').addEventListener('click', async () => {
+    const text = postInput.value.trim();
+    if(!text || !currentUser) return;
+    await addDoc(collection(db, 'posts'), {
+      text,
+      authorUid: currentUser.uid,
+      authorName: currentUser.displayName || currentUser.email || 'Pengguna',
+      ts: serverTimestamp()
+    });
+    postInput.value = '';
+  });
+  document.getElementById('clearBtn').addEventListener('click', () => { postInput.value = ''; });
+
+  const q = query(collection(db, 'posts'), orderBy('ts', 'desc'), limit(50));
+  onSnapshot(q, (snap) => {
+    if(snap.empty){
+      postsList.innerHTML = '<div class="empty">Belum ada postingan. Jadilah yang pertama berbagi!</div>';
+      return;
+    }
+    postsList.innerHTML = '';
+    snap.forEach(d => {
+      const data = d.data();
+      const el = document.createElement('div');
+      el.className = 'post';
+      el.innerHTML = `
+        <div class="post-head"><span><b>${escapeHtml(data.authorName||'Anonim')}</b></span>
+          <span>${data.ts && data.ts.toDate ? data.ts.toDate().toLocaleString('id-ID') : ''}</span></div>
+        <div class="post-text">${escapeHtml(data.text||'')}</div>
+        <div class="comments" id="comments-${d.id}"><div class="hint">Memuat komentar…</div></div>
+        ${currentUser ? `<div class="comment-row">
+          <input type="text" placeholder="Tulis komentar…" id="cinput-${d.id}">
+          <button data-postid="${d.id}" class="commentBtn">Kirim</button>
+        </div>` : ''}
+      `;
+      postsList.appendChild(el);
+      subscribeComments(d.id);
+    });
+
+    postsList.querySelectorAll('.commentBtn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pid = btn.getAttribute('data-postid');
+        const input = document.getElementById('cinput-' + pid);
+        const text = input.value.trim();
+        if(!text || !currentUser) return;
+        await addDoc(collection(db, 'posts', pid, 'comments'), {
+          text,
+          authorUid: currentUser.uid,
+          authorName: currentUser.displayName || currentUser.email || 'Pengguna',
+          ts: serverTimestamp()
+        });
+        input.value = '';
+      });
+    });
+  });
+
+  function subscribeComments(postId){
+    const cq = query(collection(db, 'posts', postId, 'comments'), orderBy('ts', 'asc'));
+    onSnapshot(cq, (snap) => {
+      const container = document.getElementById('comments-' + postId);
+      if(!container) return;
+      if(snap.empty){ container.innerHTML = ''; return; }
+      container.innerHTML = '';
+      snap.forEach(d => {
+        const c = d.data();
+        const cel = document.createElement('div');
+        cel.className = 'comment';
+        cel.innerHTML = `<b>${escapeHtml(c.authorName||'Anonim')}:</b> ${escapeHtml(c.text||'')}`;
+        container.appendChild(cel);
+      });
+    });
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+</script>
+
+<!-- ========================================================
+     CONTOH FIRESTORE SECURITY RULES (pasang di Firebase Console
+     -> Firestore Database -> Rules):
+
+     rules_version = '2';
+     service cloud.firestore {
+       match /databases/{database}/documents {
+         match /posts/{postId} {
+           allow read: if true;
+           allow create: if request.auth != null;
+           match /comments/{commentId} {
+             allow read: if true;
+             allow create: if request.auth != null;
+           }
+         }
+       }
+     }
+     ======================================================== -->
+</body>
+</html>
